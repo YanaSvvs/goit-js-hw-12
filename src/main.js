@@ -1,3 +1,5 @@
+// main.js
+
 import { getImagesByQuery } from './js/pixabay-api.js';
 import {
   createGallery,
@@ -13,11 +15,12 @@ import 'simplelightbox/dist/simple-lightbox.min.css';
 const searchForm = document.getElementById('search-form');
 const searchInput = document.getElementById('search-input');
 const loadMoreBtn = document.getElementById('load-more-btn');
-const galleryElement = document.getElementById('gallery'); 
+const galleryElement = document.getElementById('gallery');
 
 let currentQuery = '';
 let currentPage = 1;
-const PER_PAGE = 15; 
+const PER_PAGE = 15;
+const LOADER_MIN_DISPLAY_TIME = 500; 
 
 hideLoader();
 hideLoadMoreButton();
@@ -39,7 +42,7 @@ searchForm.addEventListener('submit', async (event) => {
   currentQuery = query;
   currentPage = 1;
   clearGallery();
-  hideLoadMoreButton(); 
+  hideLoadMoreButton();
 
   await fetchAndRenderImages();
   searchForm.reset();
@@ -47,63 +50,71 @@ searchForm.addEventListener('submit', async (event) => {
 
 loadMoreBtn.addEventListener('click', async () => {
   currentPage++;
-  await fetchAndRenderImages(true); 
+  await fetchAndRenderImages(true);
 });
 
 async function fetchAndRenderImages(isLoadMore = false) {
-  showLoader();
-  if (isLoadMore) { 
-      hideLoadMoreButton();
+  showLoader(); 
+  if (isLoadMore) {
+    hideLoadMoreButton(); 
   }
 
+  const startTime = Date.now(); 
   try {
     const data = await getImagesByQuery(currentQuery, currentPage);
+
+    const elapsedTime = Date.now() - startTime;
+    const remainingTime = LOADER_MIN_DISPLAY_TIME - elapsedTime;
+
+    if (remainingTime > 0) {
+      await new Promise(resolve => setTimeout(resolve, remainingTime));
+    }
 
     if (data.hits && data.hits.length > 0) {
       createGallery(data.hits);
 
       if (isLoadMore) {
-        const firstNewCard = galleryElement.lastElementChild; 
+        const firstNewCard = galleryElement.lastElementChild;
         if (firstNewCard) {
           const cardRect = firstNewCard.getBoundingClientRect();
           if (cardRect.height > 0) {
             window.scrollBy({
-              top: cardRect.height * 2, 
+              top: cardRect.height * 2,
               behavior: 'smooth',
             });
           }
         }
       }
-      
-      const totalLoadedImages = (currentPage -1) * PER_PAGE + data.hits.length;
+
+      const totalLoadedImages = (currentPage - 1) * PER_PAGE + data.hits.length;
       if (totalLoadedImages < data.totalHits) {
         showLoadMoreButton();
       } else {
         hideLoadMoreButton();
         if (data.totalHits > 0) {
-             iziToast.info({
-                title: 'Info',
-                message: "We're sorry, but you've reached the end of search results.",
-                position: 'topRight',
-                timeout: 5000,
-            });
+          iziToast.info({
+            title: 'Info',
+            message: "We're sorry, but you've reached the end of search results.",
+            position: 'topRight',
+            timeout: 5000,
+          });
         }
       }
     } else {
-      hideLoadMoreButton(); 
-      if (!isLoadMore && currentPage === 1) { 
+      hideLoadMoreButton();
+      if (!isLoadMore && currentPage === 1) {
         iziToast.info({
           title: 'No Results',
           message: 'Sorry, there are no images matching your search query. Please try again!',
           position: 'topRight',
           timeout: 5000,
         });
-      } else if (data.totalHits > 0) {  end.
-         iziToast.info({
-            title: 'Info',
-            message: "We're sorry, but you've reached the end of search results.",
-            position: 'topRight',
-            timeout: 5000,
+      } else if (data.totalHits > 0) {
+        iziToast.info({
+          title: 'Info',
+          message: "We're sorry, but you've reached the end of search results.",
+          position: 'topRight',
+          timeout: 5000,
         });
       }
     }
@@ -115,7 +126,7 @@ async function fetchAndRenderImages(isLoadMore = false) {
       position: 'topRight',
       timeout: 5000,
     });
-    hideLoadMoreButton(); 
+    hideLoadMoreButton();
   } finally {
     hideLoader();
   }
